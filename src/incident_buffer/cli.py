@@ -37,7 +37,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_serve = sub.add_parser("serve", help="run dashboard server")
-    p_serve.add_argument("--host", default="127.0.0.1")
+    p_serve.add_argument("--host", default="127.0.0.1",
+                         help="bind address; use 0.0.0.0 for LAN access "
+                              "(only when a viewer/ingest token is set or "
+                              "you front with a reverse proxy)")
     p_serve.add_argument("--port", type=int, default=8765)
     p_serve.add_argument("--data-dir", default="./incidents")
     p_serve.add_argument("--ingest-token", default=None,
