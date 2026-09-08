@@ -1,0 +1,12 @@
+{
+  "name": "@satyaki/incident-buffer",
+  "version": "0.1.0",
+  "description": "Bounded ring-buffer incident capture for Node — pino compatible; ingests into the incident-buffer dashboard",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "engines": { "node": ">=18" },
+  "keywords": ["pino", "logging", "incident", "ring-buffer"],
+  "license": "MIT",
+  "author": "Satyaki",
+  "peerDependencies": { "pino": ">=8" }
+}

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Incident Buffer</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">Incident Buffer</div>
+  <select id="svc"><option value="">All services</option></select>
+  <select id="range">
+    <option value="900">Last 15 min</option>
+    <option value="3600" selected>Last 1 h</option>
+    <option value="21600">Last 6 h</option>
+    <option value="86400">Last 24 h</option>
+    <option value="0">All</option>
+  </select>
+  <input id="q" placeholder="Search incident/req/job/trace/error…">
+  <label class="toggle"><input type="checkbox" id="live" checked> Live</label>
+  <span id="conn" class="conn">…</span>
+  <span id="updated" class="muted"></span>
+</header>
+
+<main>
+  <section id="list-pane">
+    <div id="new-arrivals" class="banner" hidden></div>
+    <table id="incidents">
+      <thead>
+        <tr><th>Time</th><th>Service</th><th>Error</th><th>Request / Job</th><th>Evidence</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="empty" class="empty" hidden>
+      <p><b>No incidents recorded.</b></p>
+      <p class="muted">This does not prove no errors occurred — it only means none have reached this dashboard.</p>
+    </div>
+    <button id="more" hidden>Load more</button>
+  </section>
+
+  <section id="detail-pane" hidden>
+    <button id="back" hidden>← Back</button>
+    <header class="detail-head">
+      <h2 id="d-title">—</h2>
+      <div class="meta">
+        <span id="d-svc"></span> · <span id="d-ver"></span> · <span id="d-ts"></span>
+      </div>
+      <div class="ids">
+        <span id="d-req"></span><span id="d-job"></span><span id="d-trace"></span>
+      </div>
+      <div class="actions">
+        <button id="copy-id">Copy incident id</button>
+        <a id="download" download>Download JSON</a>
+      </div>
+    </header>
+    <nav class="tabs">
+      <button class="tab active" data-tab="timeline">Timeline</button>
+      <button class="tab" data-tab="exception">Exception</button>
+      <button class="tab" data-tab="metadata">Metadata</button>
+    </nav>
+    <div id="tab-timeline" class="tab-body">
+      <div id="ev-banner" class="banner warn" hidden></div>
+      <div class="tl-controls">
+        <select id="ev-sev">
+          <option value="">All severities</option>
+          <option>DEBUG</option><option>INFO</option><option>WARN</option><option>ERROR</option><option>FATAL</option>
+        </select>
+        <input id="ev-q" placeholder="Search this incident…">
+      </div>
+      <ol id="timeline" class="timeline"></ol>
+      <p class="muted small">Captured evidence — log sequence alone does not prove causation.</p>
+    </div>
+    <div id="tab-exception" class="tab-body" hidden>
+      <div class="row"><b id="ex-type"></b></div>
+      <pre id="ex-msg"></pre>
+      <details open><summary>Stack trace</summary>
+        <pre id="ex-stack"></pre>
+        <button id="copy-stack">Copy stack trace</button>
+      </details>
+    </div>
+    <div id="tab-metadata" class="tab-body" hidden>
+      <dl id="meta"></dl>
+    </div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
