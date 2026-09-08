@@ -16,6 +16,7 @@ from queue import Empty, Queue
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
     FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse,
 )
@@ -35,7 +36,17 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 idx = Index(DATA_DIR / "_index.sqlite")
 idx.rescan(DATA_DIR)
 
+CORS_ORIGINS = os.environ.get("INCIDENT_BUFFER_CORS_ORIGINS", "*").split(",")
+
 app = FastAPI(title="Incident Buffer Dashboard", version=__version__)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in CORS_ORIGINS if o.strip()],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["authorization", "content-type"],
+    allow_credentials=False,
+    max_age=600,
+)
 
 
 def _rescan_loop() -> None:

@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+<meta charset=utf-8>
+<title>incident-buffer FE demo</title>
+<script src="http://192.168.1.8:8765/static/incident-buffer.js"></script>
+</head>
+<body>
+<h3>FE demo — reports to dashboard at 192.168.1.8:8765</h3>
+<button id=go>Trigger error</button>
+<pre id=out></pre>
+<script>
+  const ib = new IncidentBuffer({
+    ingestUrl: "http://192.168.1.8:8765/api/ingest",
+    ingestToken: "demo",
+    service: "web-frontend",
+    serviceVersion: "0.1.0-DEMO",
+    capacity: 200,
+  });
+  ib.installGlobalHandlers();
+  ib.debug("page loaded", { url: location.href });
+  document.getElementById("go").onclick = () => {
+    ib.debug("user clicked go", { ts: Date.now() });
+    ib.warn("cart validation warned", { code: "STOCK_LOW" });
+    try {
+      // synthetic error
+      null.pretendToBeAnObject();
+    } catch (err) {
+      const id = ib.capture({ trigger: "user_click_error", error: err });
+      document.getElementById("out").textContent = "captured: " + id;
+    }
+  };
+</script>
+</body>
+</html>

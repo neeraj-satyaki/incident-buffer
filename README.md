@@ -4,6 +4,122 @@ Bounded ring-buffer incident capture, on-disk canonical evidence, tiny
 FastAPI dashboard. Python + Node/pino companions share one envelope schema
 so a single dashboard serves both.
 
+## Architecture — one dashboard, many services
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ Frontend    │    │ FastAPI BE  │    │ Node worker │    │ CLI script  │
+│ (browser)   │    │  (Python)   │    │  (Pino)     │    │             │
+│             │    │             │    │             │    │             │
+│ <script>    │    │ pip install │    │ npm install │    │ pip install │
+│ ib.capture()│    │ ib.capture()│    │ ib.capture()│    │ ib.capture()│
+└──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+       │                  │                  │                   │
+       │  HTTPS POST /api/ingest    (Bearer <ingest-token>)      │
+       └──────────────┬───┴──────────────────┴───────────────────┘
+                      ▼
+           ┌──────────────────────┐
+           │  DASHBOARD CONTAINER │   one per team / env
+           │  port 8765           │
+           │  SQLite index        │
+           │  JSON evidence files │
+           └──────────────────────┘
+```
+
+**Rule of thumb:** the dashboard is a single central service (one per env).
+Every app service imports the client library and either:
+
+- POSTs to `/api/ingest` over the network (works across hosts), OR
+- writes to a **shared volume** the dashboard container also mounts (works
+  when the app runs on the same host, cheaper).
+
+Choose per service; you can mix.
+
+### Wire the FE (browser)
+
+```html
+<script src="https://dash.internal:8765/static/incident-buffer.js"></script>
+<script>
+  const ib = new IncidentBuffer({
+    ingestUrl:   "https://dash.internal:8765/api/ingest",
+    ingestToken: "…",           // fetch from your CSP-safe config endpoint
+    service:     "web-frontend",
+    serviceVersion: "3.0.5",
+    capacity: 300,
+  });
+  ib.installGlobalHandlers();   // window.onerror + unhandledrejection + console.error hook
+  ib.debug("cart loaded", { items: 3 });
+</script>
+```
+
+Try it: open `demo/frontend-demo.html` in a browser and click **Trigger
+error**. A new incident under service `web-frontend` appears in the list.
+
+### Wire a Python service (FastAPI / worker / script)
+
+```python
+from incident_buffer import IncidentBuffer, HttpExporter
+
+# option A — write locally, exporter posts to dashboard
+exporter = HttpExporter(url="http://dash.internal:8765/api/ingest",
+                        auth_token="…")
+ib = IncidentBuffer(
+    service="reimbursement-api", service_version="1.4.0",
+    data_dir="/var/lib/incident-buffer",
+    on_capture=lambda env, p: exporter.enqueue(p),
+)
+
+# option B — write straight to a bind-mount shared with the dashboard
+ib = IncidentBuffer(
+    service="reimbursement-api", service_version="1.4.0",
+    data_dir="/data",             # same /data the dashboard mounts
+)
+
+@app.exception_handler(Exception)
+async def catch_all(request, exc):
+    ib.capture(trigger="fastapi_exception", error=exc,
+               request_id=request.state.req_id)
+    raise exc
+```
+
+### Wire a Node service (Pino, worker, script)
+
+```javascript
+const pino = require('pino');
+const { IncidentBuffer, HttpExporter } = require('@satyaki/incident-buffer');
+
+const ib = new IncidentBuffer({
+  service: 'checkout-node', serviceVersion: '2.1.0',
+  dataDir: process.env.IB_DATA_DIR || './incidents',
+  exporter: new HttpExporter({
+    url: 'http://dash.internal:8765/api/ingest', authToken: process.env.IB_TOKEN,
+  }),
+});
+const log = pino({ level: 'debug' }, ib.stream());  // pino → ring buffer
+
+process.on('uncaughtException', (err) => {
+  ib.capture({ trigger: 'uncaughtException', error: err });
+  process.exit(1);
+});
+```
+
+### Rotating tokens
+
+Ingest tokens live in the container env (`INCIDENT_BUFFER_INGEST_TOKEN`).
+Rotate by redeploying the dashboard with the new token AND rolling out the
+new token to each service. There is no shared-secret registry — that's on
+purpose (fewer things to configure and break).
+
+### Cross-origin (browser client)
+
+The dashboard sets `Access-Control-Allow-Origin` from
+`INCIDENT_BUFFER_CORS_ORIGINS` (default `*`). Lock this to your FE origin
+in production:
+
+```bash
+docker run … -e INCIDENT_BUFFER_CORS_ORIGINS="https://app.example.com,https://admin.example.com" …
+```
+
 ## Docker — single container
 
 Everything (server + SQLite index + UI + ingest) runs in one image on port
