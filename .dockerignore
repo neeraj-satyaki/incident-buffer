@@ -1,0 +1,13 @@
+.venv/
+.venv-*/
+__pycache__/
+*.pyc
+dist/
+build/
+incidents/
+node_modules/
+.git/
+.gitignore
+tests/
+docs/
+demo/

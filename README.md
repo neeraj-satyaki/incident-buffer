@@ -4,6 +4,38 @@ Bounded ring-buffer incident capture, on-disk canonical evidence, tiny
 FastAPI dashboard. Python + Node/pino companions share one envelope schema
 so a single dashboard serves both.
 
+## Docker — single container
+
+Everything (server + SQLite index + UI + ingest) runs in one image on port
+**8765**. State lives in a mounted `/data` volume so container upgrades
+never touch incident files.
+
+```bash
+docker build -t incident-buffer:0.1.0 .
+
+docker run -d --name incident-buffer \
+  -p 8765:8765 \
+  -v "$PWD/incidents:/data" \
+  -e INCIDENT_BUFFER_INGEST_TOKEN=change-me \
+  incident-buffer:0.1.0
+
+# or compose
+docker compose up -d
+```
+
+Env vars honoured at runtime:
+
+| Var | Purpose |
+|---|---|
+| `INCIDENT_BUFFER_DATA_DIR` | data path inside container (default `/data`) |
+| `INCIDENT_BUFFER_INGEST_TOKEN` | required to accept `POST /api/ingest` |
+| `INCIDENT_BUFFER_VIEWER_TOKEN` | optional viewer bearer |
+| `INCIDENT_BUFFER_MAX_PAYLOAD` | ingest byte cap (default 1 MiB) |
+
+The image contains ONLY the server. Your app containers (Python or Node)
+import the client library and either write incidents to a shared volume OR
+POST via `/api/ingest`.
+
 ## Quick start
 
 ```bash

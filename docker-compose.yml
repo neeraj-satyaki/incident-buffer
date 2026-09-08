@@ -1,0 +1,20 @@
+# incident-buffer — single-container dashboard + ingest.
+# ponytail: one service, one volume, one port. Reverse-proxy in front of it
+# if you want HTTPS or richer auth; the container itself stays boring.
+
+services:
+  incident-buffer:
+    build: .
+    image: incident-buffer:0.1.0
+    container_name: incident-buffer
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./incidents:/data
+    environment:
+      # supply BOTH tokens when exposing beyond localhost.
+      INCIDENT_BUFFER_INGEST_TOKEN: "${INCIDENT_BUFFER_INGEST_TOKEN:-}"
+      INCIDENT_BUFFER_VIEWER_TOKEN: "${INCIDENT_BUFFER_VIEWER_TOKEN:-}"
+      INCIDENT_BUFFER_MAX_PAYLOAD: "1048576"
+    # image already runs the dashboard; no override needed
